@@ -21,10 +21,54 @@ services:
     image: postgres:14.6-alpine
     volumes:
       - postgres_data:/var/lib/postgresql/data/
+    env_file:
+      - .env
     environment:
       - POSTGRES_DB=dbname
       - POSTGRES_USER=dbuser
       - POSTGRES_PASSWORD=pass
+
+
+  redis:
+    env_file:
+      - .env
+    image: redis:7.0.5-alpine
+    hostname: redis
+
+
+  worker:
+    build:
+      context: .
+    hostname: worker
+    entrypoint: celery
+    command: -A celery_app.app worker --loglevel=info
+    env_file:
+      - .env
+    volumes:
+      - .:/code
+    links:
+      - redis
+    depends_on:
+      - redis
+
+
+  flower:
+    build:
+      context: .
+    hostname: flower
+    entrypoint: celery
+    command: -A celery_app.app flower
+    env_file:
+      - .env
+    volumes:
+      - .:/code
+    links:
+      - redis
+    depends_on:
+      - redis
+    ports:
+      - "5555:5555"
+
 
 volumes:
   postgres_data:
